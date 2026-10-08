@@ -13,16 +13,14 @@ def client():
     with app.test_client() as client:
         yield client
 
-
+# Clear inventory before each test
 @pytest.fixture(autouse=True)
 def clear_inventory():
     inventory.clear()
     app_module.next_id = 1
 
 
-# =========================
-# API TESTS
-# =========================
+#api tests
 
 def test_get_inventory(client):
     response = client.get("/inventory")
@@ -205,9 +203,7 @@ def test_invalid_quantity(client):
     assert response.status_code == 400
 
 
-# =========================
-# EXTERNAL API TESTS
-# =========================
+# external api tests
 
 @patch("external_api.requests.get")
 def test_fetch_product_by_barcode(mock_get):
@@ -292,10 +288,7 @@ def test_external_api_product_not_found(mock_get):
     assert result is None
 
 
-# =========================
-# LOOKUP TESTS
-# =========================
-
+# lookup
 @patch("app.fetch_product")
 def test_lookup_by_barcode(mock_fetch_product, client):
     mock_fetch_product.return_value = {
@@ -326,9 +319,7 @@ def test_lookup_without_search_parameter(client):
     assert "barcode or product name" in response.get_json()["error"]
 
 
-# =========================
-# CLI TESTS
-# =========================
+# cli tests
 
 def test_cli_add_item(capsys):
     response = Mock()
