@@ -321,10 +321,14 @@ def test_lookup_without_search_parameter(client):
 
 # cli tests
 
-def test_cli_add_item(capsys):
+
+# CLI tests
+
+def test_cli_add_item(capsys, monkeypatch):
+    from cli import add_item
+
     response = Mock()
     response.status_code = 201
-
     response.json.return_value = {
         "id": 1,
         "name": "Milk",
@@ -332,30 +336,21 @@ def test_cli_add_item(capsys):
         "price": 150
     }
 
-    args = Namespace(
-        name="Milk",
-        quantity=10,
-        price=150,
-        barcode=None
-    )
+    answers = iter(["Milk", "10", "150", ""])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(answers))
 
-    with patch(
-        "cli.requests.post",
-        return_value=response
-    ):
-        from cli import add_item
-
-        add_item(args)
+    with patch("cli.requests.post", return_value=response):
+        add_item()
 
     output = capsys.readouterr().out
-
-    assert "Item added successfully." in output
+    assert "Item added successfully" in output
 
 
 def test_cli_list_items(capsys):
+    from cli import list_items
+
     response = Mock()
     response.status_code = 200
-
     response.json.return_value = [
         {
             "id": 1,
@@ -365,24 +360,20 @@ def test_cli_list_items(capsys):
         }
     ]
 
-    with patch(
-        "cli.requests.get",
-        return_value=response
-    ):
-        from cli import list_items
-
-        list_items(Namespace())
+    with patch("cli.requests.get", return_value=response):
+        list_items()
 
     output = capsys.readouterr().out
-
     assert "Milk" in output
     assert "Quantity: 10" in output
 
 
-def test_cli_update_item(capsys):
+
+def test_cli_update_item(capsys, monkeypatch):
+    from cli import update_item
+
     response = Mock()
     response.status_code = 200
-
     response.json.return_value = {
         "id": 1,
         "name": "Milk",
@@ -390,43 +381,44 @@ def test_cli_update_item(capsys):
         "price": 200
     }
 
-    args = Namespace(
-        id=1,
-        price=200,
-        quantity=20
+    # Item ID, update choice (3 = both), price, quantity
+    answers = iter(["1", "3", "200", "20"])
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda prompt="": next(answers)
     )
 
-    with patch(
-        "cli.requests.patch",
-        return_value=response
-    ):
-        from cli import update_item
-
-        update_item(args)
+    with patch("cli.requests.patch", return_value=response):
+        update_item()
 
     output = capsys.readouterr().out
+    assert "Item updated successfully" in output
 
-    assert "Item updated successfully." in output
 
 
-def test_cli_delete_item(capsys):
+
+def test_cli_delete_item(capsys, monkeypatch):
+    from cli import delete_item
+
     response = Mock()
     response.status_code = 200
-
     response.json.return_value = {
         "message": "Item deleted"
     }
 
-    args = Namespace(id=1)
+    # Enter the item ID, then type "yes" to confirm.
+    answers = iter(["1", "yes"])
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda prompt="": next(answers)
+    )
 
-    with patch(
-        "cli.requests.delete",
-        return_value=response
-    ):
-        from cli import delete_item
-
-        delete_item(args)
+    with patch("cli.requests.delete", return_value=response):
+        delete_item()
 
     output = capsys.readouterr().out
-
+    assert "Delete request completed." in output
     assert "Item deleted" in output
+
+
+

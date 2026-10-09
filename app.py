@@ -157,7 +157,7 @@ def delete_item(id):
     }), 404
 
 
-# GET /lookup
+# GET /looku
 # Search OpenFoodFacts by barcode or product name
 @app.route("/lookup", methods=["GET"])
 def lookup_product():
