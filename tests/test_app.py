@@ -166,9 +166,9 @@ def test_delete_inventory_item(mock_fetch_product, client):
     assert response.get_json() == []
 
 
-# =========================
+
 # ERROR TESTS
-# =========================
+
 
 def test_get_missing_item(client):
     response = client.get("/inventory/999")

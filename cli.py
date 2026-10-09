@@ -1,13 +1,11 @@
-import argparse
-import requests
 
+import requests
 
 API_URL = "http://127.0.0.1:5000"
 
 
 def handle_response(response):
-    """Handle API responses and display useful errors."""
-
+    """Handle API responses and display errors."""
     try:
         data = response.json()
     except ValueError:
@@ -21,17 +19,38 @@ def handle_response(response):
     return data
 
 
-def add_item(args):
+def add_item():
     """Add a new inventory item."""
+    print("\n--- Add New Inventory Item ---")
+
+    name = input("Enter product name: ").strip()
+
+    if not name:
+        print("Error: Product name cannot be empty.")
+        return
+
+    try:
+        quantity = int(input("Enter quantity: "))
+        price = float(input("Enter price: "))
+
+        if quantity < 0 or price < 0:
+            print("Error: Quantity and price cannot be negative.")
+            return
+
+    except ValueError:
+        print("Error: Enter valid numbers for quantity and price.")
+        return
+
+    barcode = input("Enter barcode (optional): ").strip()
 
     data = {
-        "name": args.name,
-        "quantity": args.quantity,
-        "price": args.price
+        "name": name,
+        "quantity": quantity,
+        "price": price
     }
 
-    if args.barcode:
-        data["barcode"] = args.barcode
+    if barcode:
+        data["barcode"] = barcode
 
     try:
         response = requests.post(
@@ -42,16 +61,17 @@ def add_item(args):
 
         result = handle_response(response)
 
-        if result:
-            print("Item added successfully.")
+        if result is not None:
+            print("\nItem added successfully!")
             print(result)
 
     except requests.exceptions.RequestException as error:
         print(f"API connection error: {error}")
 
 
-def list_items(args):
+def list_items():
     """Display all inventory items."""
+    print("\n--- Inventory Items ---")
 
     try:
         response = requests.get(
@@ -61,103 +81,160 @@ def list_items(args):
 
         result = handle_response(response)
 
-        if result is not None:
-            if not result:
-                print("Inventory is empty.")
-            else:
-                for item in result:
-                    print(
-                        f"ID: {item['id']} | "
-                        f"Name: {item['name']} | "
-                        f"Quantity: {item['quantity']} | "
-                        f"Price: {item['price']}"
-                    )
+        if result is None:
+            return
+
+        if not result:
+            print("Inventory is empty.")
+            return
+
+        for item in result:
+            print(f"\nID: {item['id']}")
+            print(f"Name: {item['name']}")
+            print(f"Quantity: {item['quantity']}")
+            print(f"Price: {item['price']}")
+            print("-" * 25)
 
     except requests.exceptions.RequestException as error:
         print(f"API connection error: {error}")
 
 
-def get_item(args):
+def get_item():
     """Display one inventory item."""
+    try:
+        item_id = int(input("Enter the product ID: "))
+    except ValueError:
+        print("Error: ID must be a number.")
+        return
 
     try:
         response = requests.get(
-            f"{API_URL}/inventory/{args.id}",
+            f"{API_URL}/inventory/{item_id}",
             timeout=10
         )
 
         result = handle_response(response)
 
-        if result:
+        if result is not None:
+            print("\nProduct details:")
             print(result)
 
     except requests.exceptions.RequestException as error:
         print(f"API connection error: {error}")
 
 
-def update_item(args):
-    """Update an item's price or quantity."""
+def update_item():
+    """Update the price or quantity of an item."""
+    try:
+        item_id = int(input("Enter the product ID to update: "))
+    except ValueError:
+        print("Error: ID must be a number.")
+        return
 
+    print("\nWhat would you like to update?")
+    print("1. Price")
+    print("2. Quantity")
+    print("3. Both")
+
+    choice = input("Choose an option: ").strip()
     data = {}
 
-    if args.price is not None:
-        data["price"] = args.price
+    if choice in ("1", "3"):
+        try:
+            price = float(input("Enter the new price: "))
+            if price < 0:
+                print("Error: Price cannot be negative.")
+                return
+            data["price"] = price
+        except ValueError:
+            print("Error: Enter a valid price.")
+            return
 
-    if args.quantity is not None:
-        data["quantity"] = args.quantity
+    if choice in ("2", "3"):
+        try:
+            quantity = int(input("Enter the new quantity: "))
+            if quantity < 0:
+                print("Error: Quantity cannot be negative.")
+                return
+            data["quantity"] = quantity
+        except ValueError:
+            print("Error: Enter a valid quantity.")
+            return
 
     if not data:
-        print("Error: Provide --price or --quantity.")
+        print("Invalid choice. Please choose 1, 2, or 3.")
         return
 
     try:
         response = requests.patch(
-            f"{API_URL}/inventory/{args.id}",
+            f"{API_URL}/inventory/{item_id}",
             json=data,
             timeout=10
         )
 
         result = handle_response(response)
 
-        if result:
-            print("Item updated successfully.")
+        if result is not None:
+            print("\nItem updated successfully!")
             print(result)
 
     except requests.exceptions.RequestException as error:
         print(f"API connection error: {error}")
 
 
-def delete_item(args):
+def delete_item():
     """Delete an inventory item."""
+    try:
+        item_id = int(input("Enter the product ID to delete: "))
+    except ValueError:
+        print("Error: ID must be a number.")
+        return
+
+    confirm = input(
+        f"Are you sure you want to delete item {item_id}? (yes/no): "
+    ).strip().lower()
+
+    if confirm != "yes":
+        print("Deletion cancelled.")
+        return
 
     try:
         response = requests.delete(
-            f"{API_URL}/inventory/{args.id}",
+            f"{API_URL}/inventory/{item_id}",
             timeout=10
         )
 
         result = handle_response(response)
 
-        if result:
+        if result is not None:
+            print("Delete request completed.")
             print(result)
 
     except requests.exceptions.RequestException as error:
         print(f"API connection error: {error}")
 
 
-def find_product(args):
-    """Find a product using the OpenFoodFacts API."""
+def find_product():
+    """Find a product using OpenFoodFacts."""
+    print("\n--- Find a Product ---")
+    print("1. Search by barcode")
+    print("2. Search by product name")
 
-    if not args.barcode and not args.name:
-        print("Error: Provide --barcode or --name.")
+    choice = input("Choose a search method: ").strip()
+
+    if choice == "1":
+        value = input("Enter the product barcode: ").strip()
+        params = {"barcode": value}
+    elif choice == "2":
+        value = input("Enter the product name: ").strip()
+        params = {"name": value}
+    else:
+        print("Invalid choice.")
         return
 
-    params = {}
-
-    if args.barcode:
-        params["barcode"] = args.barcode
-    else:
-        params["name"] = args.name
+    if not value:
+        print("Error: Search value cannot be empty.")
+        return
 
     try:
         response = requests.get(
@@ -168,8 +245,8 @@ def find_product(args):
 
         result = handle_response(response)
 
-        if result:
-            print("Product found:")
+        if result is not None:
+            print("\nProduct found:")
             print(result)
 
     except requests.exceptions.RequestException as error:
@@ -177,132 +254,41 @@ def find_product(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Retail Inventory Management CLI"
-    )
+    """Display the interactive inventory menu."""
+    while True:
+        print("\n================================")
+        print(" RETAIL INVENTORY MANAGEMENT")
+        print("================================")
+        print("1. Add an inventory item")
+        print("2. View all inventory items")
+        print("3. View one inventory item")
+        print("4. Update an inventory item")
+        print("5. Delete an inventory item")
+        print("6. Find a product using OpenFoodFacts")
+        print("7. Exit")
+        print("================================")
 
-    subparsers = parser.add_subparsers(
-        dest="command",
-        required=True
-    )
+        choice = input("Enter your choice (1-7): ").strip()
 
-    # ADD
-    add_parser = subparsers.add_parser(
-        "add",
-        help="Add a new inventory item"
-    )
-
-    add_parser.add_argument(
-        "--name",
-        required=True,
-        help="Product name"
-    )
-
-    add_parser.add_argument(
-        "--quantity",
-        required=True,
-        type=int,
-        help="Stock quantity"
-    )
-
-    add_parser.add_argument(
-        "--price",
-        required=True,
-        type=float,
-        help="Product price"
-    )
-
-    add_parser.add_argument(
-        "--barcode",
-        help="Product barcode"
-    )
-
-    add_parser.set_defaults(func=add_item)
-
-    # LIST
-    list_parser = subparsers.add_parser(
-        "list",
-        help="View all inventory items"
-    )
-
-    list_parser.set_defaults(func=list_items)
-
-    # GET
-    get_parser = subparsers.add_parser(
-        "get",
-        help="View one inventory item"
-    )
-
-    get_parser.add_argument(
-        "id",
-        type=int,
-        help="Inventory item ID"
-    )
-
-    get_parser.set_defaults(func=get_item)
-
-    # UPDATE
-    update_parser = subparsers.add_parser(
-        "update",
-        help="Update price or stock quantity"
-    )
-
-    update_parser.add_argument(
-        "id",
-        type=int,
-        help="Inventory item ID"
-    )
-
-    update_parser.add_argument(
-        "--price",
-        type=float,
-        help="New product price"
-    )
-
-    update_parser.add_argument(
-        "--quantity",
-        type=int,
-        help="New stock quantity"
-    )
-
-    update_parser.set_defaults(func=update_item)
-
-    # DELETE
-    delete_parser = subparsers.add_parser(
-        "delete",
-        help="Delete an inventory item"
-    )
-
-    delete_parser.add_argument(
-        "id",
-        type=int,
-        help="Inventory item ID"
-    )
-
-    delete_parser.set_defaults(func=delete_item)
-
-    # FIND
-    find_parser = subparsers.add_parser(
-        "find",
-        help="Find a product using OpenFoodFacts"
-    )
-
-    find_parser.add_argument(
-        "--barcode",
-        help="Search using barcode"
-    )
-
-    find_parser.add_argument(
-        "--name",
-        help="Search using product name"
-    )
-
-    find_parser.set_defaults(func=find_product)
-
-    args = parser.parse_args()
-
-    args.func(args)
+        if choice == "1":
+            add_item()
+        elif choice == "2":
+            list_items()
+        elif choice == "3":
+            get_item()
+        elif choice == "4":
+            update_item()
+        elif choice == "5":
+            delete_item()
+        elif choice == "6":
+            find_product()
+        elif choice == "7":
+            print("Thank you for using the inventory system!")
+            break
+        else:
+            print("Invalid choice. Please enter a number from 1 to 7.")
 
 
 if __name__ == "__main__":
     main()
+
